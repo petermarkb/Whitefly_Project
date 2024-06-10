@@ -1,25 +1,20 @@
 from fastapi import FastAPI, HTTPException
-from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker
 from models import User
+from typing import List
 
 app = FastAPI()
 
-SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
-engine = create_engine(SQLALCHEMY_DATABASE_URL)
+users_db = []
 
-SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-
-@app.post("/users/")
+@app.post("/users/", response_model=User)
 def create_user(user: User):
-    db = SessionLocal()
-    db_user = User(
-        first_name=user.first_name,
-        last_name=user.last_name,
-        email=user.email,
-        phone_number=user.phone_number
-    )
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+    for existing_user in users_db:
+        if existing_user.email == user.email:
+            raise HTTPException(status_code=400, detail="This email is already registered.")
+
+    users_db.append(user)
+    return user
+
+@app.get("/users/", response_model=List[User])
+def get_users():
+    return users_db
